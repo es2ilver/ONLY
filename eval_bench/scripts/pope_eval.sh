@@ -1,12 +1,13 @@
 #!/bin/bash
 
-seed=42
+seed=4 # Llava 4, 6, 8, # Minigpt 4, 8, 10 # mplu 4, 10, 13
+
 dataset_name="coco" # coco | aokvqa | gqa
 type="adversarial" # random | popular | adversarial
 
 # # llava
 model="llava"
-model_path="/data/ce/model/llava-v1.5-7b"
+model_path="/home/data/vgilab/jeongeun/checkpoints/llava-v1.5-7b"
 
 # instructblip
 # model="instructblip"
@@ -15,6 +16,14 @@ model_path="/data/ce/model/llava-v1.5-7b"
 # qwen-vl
 # model="qwen-vl"
 # model_path="/data/zifu/model/Qwen-VL-Chat"
+
+# minigpt
+# model="minigpt"
+# model_path="/home/data/vgilab/jeongeun/checkpoints/pretrained_minigpt4_llama2_7b.pth"
+
+# mplu 
+# model="mplu"
+# model_path="/home/data/vgilab/jeongeun/checkpoints/pretrained_minigpt4_llama2_7b.pth"
 
 pope_path="/data/ce/data/POPE/${dataset_name}/${dataset_name}_pope_${type}.json"
 data_path="/data/ce/data/coco/val2014"
