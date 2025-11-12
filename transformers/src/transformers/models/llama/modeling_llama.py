@@ -1164,10 +1164,13 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
                 "past_key_values": past_key_values,
                 "use_cache": kwargs.get("use_cache"),
                 "attention_mask": attention_mask,
-                "use_only": kwargs.get("use_only", None),
-                "enhance_layer_index": kwargs.get("enhance_layer_index", None),
             }
         )
+        # Add use_only and enhance_layer_index if present in kwargs
+        if "use_only" in kwargs:
+            model_inputs["use_only"] = kwargs["use_only"]
+        if "enhance_layer_index" in kwargs:
+            model_inputs["enhance_layer_index"] = kwargs["enhance_layer_index"]
         return model_inputs
 
     @staticmethod
