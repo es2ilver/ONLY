@@ -7,7 +7,7 @@ dataset_name="coco" # coco | aokvqa | gqa
 type="adversarial" # random | popular | adversarial
 
 # minigpt
-model="minigpt"
+model="minigpt4"
 model_path="/home/data/vgilab/jeongeun/checkpoints/pretrained_minigpt4_llama2_7b.pth"
 llama_model_path="/home/data/vgilab/jeongeun/checkpoints/llama-2-7b-chat-hf"
 
