@@ -276,7 +276,8 @@ def main():
         prompt = qs
         prompt_segs = prompt.split('<ImageHere>')
         if len(prompt_segs) == 1:
-            prompt_segs = [prompt, '']
+            # If <ImageHere> is not in prompt, add it at the beginning
+            prompt = '<ImageHere>' + prompt
         
         # Get context embedding
         context_emb = model.get_context_emb(prompt, img_list)
