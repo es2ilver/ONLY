@@ -286,24 +286,38 @@ def model_forward(
     else:
         position_ids = position_ids.view(-1, seq_length).long()
 
-    if inputs_embeds is None:
-        inputs_embeds = self.embed_tokens(input_ids)
-    # embed positions
-    if attention_mask is None:
-        attention_mask = torch.ones(
-            (batch_size, seq_length_with_past), dtype=torch.bool, device=inputs_embeds.device
-        )
-    attention_mask = self._prepare_decoder_attention_mask(
-        attention_mask, (batch_size, seq_length), inputs_embeds, past_key_values_length
-    )
-
     # If use_only is True, use ONLY transformers' forward (before monkey patch)
     # ONLY transformers already has use_only support built-in
+    # Call it before processing attention_mask to avoid shape issues
     if use_only and _original_llama_model_forward is not None:
+        # Prepare inputs_embeds if needed
+        if inputs_embeds is None:
+            inputs_embeds = self.embed_tokens(input_ids)
+        
+        # Prepare attention_mask in original format (2D) for ONLY transformers
+        if attention_mask is None:
+            attention_mask_2d = torch.ones(
+                (batch_size, seq_length_with_past), dtype=torch.bool, device=inputs_embeds.device
+            )
+        else:
+            # Convert attention_mask to 2D format expected by ONLY transformers
+            if attention_mask.dim() == 4:
+                # 4D: (batch, 1, tgt_len, src_len) -> 2D: (batch, src_len)
+                attention_mask_2d = attention_mask[:, 0, 0, :].bool()
+            elif attention_mask.dim() == 3:
+                # 3D: (batch, tgt_len, src_len) -> 2D: (batch, src_len)
+                attention_mask_2d = attention_mask[:, 0, :].bool()
+            elif attention_mask.dim() == 2:
+                # Already 2D
+                attention_mask_2d = attention_mask.bool()
+            else:
+                # Fallback: use first dimension
+                attention_mask_2d = attention_mask.view(batch_size, -1).bool()
+        
         result = _original_llama_model_forward(
             self,
             input_ids=input_ids,
-            attention_mask=attention_mask,
+            attention_mask=attention_mask_2d,
             position_ids=position_ids,
             past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
@@ -316,6 +330,17 @@ def model_forward(
         )
         # Return (outputs, hidden_states_cd) tuple
         return result if isinstance(result, tuple) and len(result) == 2 else (result, None)
+
+    if inputs_embeds is None:
+        inputs_embeds = self.embed_tokens(input_ids)
+    # embed positions
+    if attention_mask is None:
+        attention_mask = torch.ones(
+            (batch_size, seq_length_with_past), dtype=torch.bool, device=inputs_embeds.device
+        )
+    attention_mask = self._prepare_decoder_attention_mask(
+        attention_mask, (batch_size, seq_length), inputs_embeds, past_key_values_length
+    )
 
     hidden_states = inputs_embeds
 
