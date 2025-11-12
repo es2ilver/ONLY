@@ -1106,6 +1106,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         )
         # Handle return_dict and use_only cases
         # When use_only=True, LlamaModel returns (BaseModelOutputWithPast, hidden_states_cd) tuple
+        logits_cd = None
         if isinstance(outputs, tuple) and len(outputs) == 2:
             # use_only=True case: (BaseModelOutputWithPast or tuple, hidden_states_cd)
             model_outputs, hidden_states_cd = outputs
@@ -1115,13 +1116,24 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             else:
                 # model_outputs is tuple (hidden_states, ...)
                 hidden_states = model_outputs[0]
+            
+            # Calculate logits_cd for ONLY method
+            if hidden_states_cd is not None:
+                hidden_states_cd = hidden_states_cd + 0.5 * hidden_states
+                if self.pretraining_tp > 1:
+                    lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.pretraining_tp, dim=0)
+                    logits_cd = [F.linear(hidden_states_cd, lm_head_slices[i]) for i in range(self.pretraining_tp)]
+                    logits_cd = torch.cat(logits_cd, dim=-1)
+                else:
+                    logits_cd = self.lm_head(hidden_states_cd)
+                logits_cd = logits_cd.float()
         else:
             # Normal case (use_only=False)
             if return_dict:
                 hidden_states = outputs.last_hidden_state
             else:
                 hidden_states = outputs[0]
-            hidden_states_cd = None
+        
         if self.pretraining_tp > 1:
             lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.pretraining_tp, dim=0)
             logits = [F.linear(hidden_states, lm_head_slices[i]) for i in range(self.pretraining_tp)]
@@ -1163,7 +1175,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
                 past_key_values=model_outputs.past_key_values,
                 hidden_states=model_outputs.hidden_states,
                 attentions=model_outputs.attentions,
-            )
+            ), logits_cd if use_only else None
         else:
             # Normal case
             return CausalLMOutputWithPast(
