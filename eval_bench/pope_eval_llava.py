@@ -83,7 +83,7 @@ def parse_args():
     parser.add_argument("--js_gamma", type=float, default=0.6)
 
     
-    parser.add_argument("--max_new_tokens", type=int, default=8)
+    parser.add_argument("--max_new_tokens", type=int, default=64) # originally 8 from ONLY
     parser.add_argument("--type", type=str, default="random")
     parser.add_argument("--dataset_name", type=str, default="coco")
 
