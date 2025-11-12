@@ -12,6 +12,13 @@ class MultiwayNetwork(nn.Module):
         self.multiway = torch.nn.ModuleList([module_provider() for _ in range(num_multiway)])
         self.out_features=out_features
     def forward(self, hidden_states, multiway_indices):
+        # Handle None multiway_indices (e.g., when use_only=True and using original Llama forward)
+        if multiway_indices is None:
+            # Default to using the first (text) pathway for all tokens
+            if len(self.multiway) == 1:
+                return self.multiway[0](hidden_states)
+            # Use first pathway (index 0) for all tokens
+            return self.multiway[0](hidden_states)
 
         if len(self.multiway) == 1:
             return self.multiway[0](hidden_states)

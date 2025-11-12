@@ -289,66 +289,9 @@ def model_forward(
         past_key_values_length = past_key_values[0][0].shape[2]
         seq_length_with_past = seq_length_with_past + past_key_values_length
 
-    # If use_only is True, use ONLY transformers' forward (before monkey patch)
-    # ONLY transformers already has use_only support built-in
-    # Call it BEFORE processing attention_mask to avoid shape issues
-    if use_only and _original_llama_model_forward is not None:
-        # Prepare position_ids if needed
-        if position_ids is None:
-            device = input_ids.device if input_ids is not None else inputs_embeds.device
-            position_ids = torch.arange(
-                past_key_values_length, seq_length + past_key_values_length, dtype=torch.long, device=device
-            )
-            position_ids = position_ids.unsqueeze(0).view(-1, seq_length)
-        else:
-            position_ids = position_ids.view(-1, seq_length).long()
-        
-        # Prepare inputs_embeds if needed
-        if inputs_embeds is None:
-            inputs_embeds = self.embed_tokens(input_ids)
-        
-        # Prepare attention_mask in 2D format for ONLY transformers
-        # attention_mask from prepare_inputs_labels_for_multimodal should be 2D (batch, seq_len)
-        if attention_mask is None:
-            attention_mask_2d = torch.ones(
-                (batch_size, seq_length_with_past), dtype=torch.bool, device=inputs_embeds.device
-            )
-        elif attention_mask.dim() == 2:
-            # Already 2D: (batch, seq_len) - this is the expected format
-            attention_mask_2d = attention_mask.bool()
-        else:
-            # Unexpected shape - try to convert to 2D
-            # This shouldn't happen normally, but handle it gracefully
-            if attention_mask.dim() == 1:
-                attention_mask_2d = attention_mask.unsqueeze(0).bool()
-            elif attention_mask.dim() == 4:
-                # 4D: (batch, 1, tgt_len, src_len) -> take src_len dimension
-                attention_mask_2d = attention_mask[:, 0, -1, :].bool()
-            elif attention_mask.dim() == 3:
-                # 3D: (batch, tgt_len, src_len) -> take src_len dimension
-                attention_mask_2d = attention_mask[:, -1, :].bool()
-            else:
-                # Fallback: use first two dimensions
-                attention_mask_2d = attention_mask.view(batch_size, -1)[:, :seq_length_with_past].bool()
-        
-        result = _original_llama_model_forward(
-            self,
-            input_ids=input_ids,
-            attention_mask=attention_mask_2d,
-            position_ids=position_ids,
-            past_key_values=past_key_values,
-            inputs_embeds=inputs_embeds,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-            use_only=use_only,
-            enhance_layer_index=enhance_layer_index,
-        )
-        # Return (outputs, hidden_states_cd) tuple
-        return result if isinstance(result, tuple) and len(result) == 2 else (result, None)
-
-    # Normal mPLUG-Owl2 processing (use_only=False or _original_llama_model_forward is None)
+    # Normal mPLUG-Owl2 processing (including use_only=True case)
+    # For use_only=True, we use the normal path but pass use_only to decoder layers
+    # This ensures modality_indicators is properly handled
     if position_ids is None:
         device = input_ids.device if input_ids is not None else inputs_embeds.device
         position_ids = torch.arange(
@@ -382,6 +325,11 @@ def model_forward(
     all_hidden_states = () if output_hidden_states else None
     all_self_attns = () if output_attentions else None
     next_decoder_cache = () if use_cache else None
+    
+    # For ONLY: initialize hidden_states_cd
+    hidden_states_cd = None
+    if use_only:
+        hidden_states_cd = inputs_embeds.clone()
 
     for idx, decoder_layer in enumerate(self.layers):
         if output_hidden_states:
@@ -406,15 +354,53 @@ def model_forward(
                 position_ids,
             )
         else:
-            layer_outputs = decoder_layer(
-                hidden_states,
-                modality_indicators=modality_indicators,
-                attention_mask=attention_mask,
-                position_ids=position_ids,
-                past_key_value=past_key_value,
-                output_attentions=output_attentions,
-                use_cache=use_cache,
-            )
+            # For ONLY: pass use_only related kwargs
+            if use_only:
+                if idx == enhance_layer_index:
+                    layer_outputs, hidden_states_cd, residual_cd = decoder_layer(
+                        hidden_states,
+                        modality_indicators=modality_indicators,
+                        attention_mask=attention_mask,
+                        position_ids=position_ids,
+                        past_key_value=past_key_value,
+                        output_attentions=output_attentions,
+                        use_cache=use_cache,
+                        last_layer='get hidden states',
+                        hidden_states_cd=hidden_states_cd,
+                    )
+                elif idx == len(self.layers) - 1:
+                    layer_outputs, hidden_states_cd, residual_cd = decoder_layer(
+                        hidden_states,
+                        modality_indicators=modality_indicators,
+                        attention_mask=attention_mask,
+                        position_ids=position_ids,
+                        past_key_value=past_key_value,
+                        output_attentions=output_attentions,
+                        use_cache=use_cache,
+                        last_layer='last layer',
+                        hidden_states_cd=hidden_states_cd,
+                    )
+                else:
+                    layer_outputs, hidden_states_cd, residual_cd = decoder_layer(
+                        hidden_states,
+                        modality_indicators=modality_indicators,
+                        attention_mask=attention_mask,
+                        position_ids=position_ids,
+                        past_key_value=past_key_value,
+                        output_attentions=output_attentions,
+                        use_cache=use_cache,
+                        hidden_states_cd=hidden_states_cd,
+                    )
+            else:
+                layer_outputs = decoder_layer(
+                    hidden_states,
+                    modality_indicators=modality_indicators,
+                    attention_mask=attention_mask,
+                    position_ids=position_ids,
+                    past_key_value=past_key_value,
+                    output_attentions=output_attentions,
+                    use_cache=use_cache,
+                )
 
         hidden_states = layer_outputs[0]
 
@@ -423,6 +409,10 @@ def model_forward(
 
         if output_attentions:
             all_self_attns += (layer_outputs[1],)
+    
+    # For ONLY: normalize hidden_states_cd
+    if use_only:
+        hidden_states_cd = self.norm(hidden_states_cd)
 
     hidden_states = self.norm(hidden_states)
 
@@ -432,13 +422,21 @@ def model_forward(
 
     next_cache = next_decoder_cache if use_cache else None
     if not return_dict:
-        return tuple(v for v in [hidden_states, next_cache, all_hidden_states, all_self_attns] if v is not None)
-    return BaseModelOutputWithPast(
+        outputs = tuple(v for v in [hidden_states, next_cache, all_hidden_states, all_self_attns] if v is not None)
+        # For ONLY: return (outputs, hidden_states_cd) tuple
+        if use_only:
+            return outputs, hidden_states_cd
+        return outputs
+    outputs = BaseModelOutputWithPast(
         last_hidden_state=hidden_states,
         past_key_values=next_cache,
         hidden_states=all_hidden_states,
         attentions=all_self_attns,
     )
+    # For ONLY: return (outputs, hidden_states_cd) tuple
+    if use_only:
+        return outputs, hidden_states_cd
+    return outputs
 
 
 def causal_model_forward(
