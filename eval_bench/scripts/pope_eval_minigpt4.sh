@@ -31,7 +31,7 @@ temperature=1.0  # do_sample=False
 #####################################
 # Run experiments for multiple seeds
 #####################################
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 
 # Calculate experiment directory path (same as in pope_eval_minigpt4.py)
 model_string_name=$(basename ${model_path})
