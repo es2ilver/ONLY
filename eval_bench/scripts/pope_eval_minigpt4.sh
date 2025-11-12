@@ -4,7 +4,7 @@
 seeds=(4 8 10)
 
 dataset_name="coco" # coco | aokvqa | gqa
-type="adversarial" # random | popular | adversarial
+type="random" # random | popular | adversarial
 
 # minigpt
 model="minigpt4"

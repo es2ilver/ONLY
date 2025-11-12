@@ -1,9 +1,9 @@
 #!/bin/bash
 
-seed=4 # Llava 4, 6, 8, # Minigpt 4, 8, 10 # mplu 4, 10, 13
+seeds=(4 6 8 10) # Llava 4, 6, 8, # Minigpt 4, 8, 10 # mplu 4, 10, 13
 
 dataset_name="coco" # coco | aokvqa | gqa
-type="adversarial" # random | popular | adversarial
+type="random" # random | popular | adversarial
 
 # llava
 model="llava"
@@ -43,26 +43,86 @@ ritual_beta=0.1
 js_gamma=0.2
 enhance_layer_index=0
 
+temperature=1.0  # do_sample=False
 
 #####################################
 # Run single experiment
 #####################################
 export CUDA_VISIBLE_DEVICES=1
-python eval_bench/pope_eval_${model}.py \
---seed ${seed} \
---model_path ${model_path} \
---model_base ${model} \
---pope_path ${pope_path} \
---data_path ${data_path} \
---log_path ${log_path} \
---use_ritual ${use_ritual} \
---use_vcd ${use_vcd} \
---use_m3id ${use_m3id} \
---use_only ${use_only} \
---ritual_alpha_pos ${ritual_alpha_pos} \
---ritual_alpha_neg ${ritual_alpha_neg} \
---ritual_beta ${ritual_beta} \
---js_gamma ${js_gamma} \
---type ${type} \
---dataset_name ${dataset_name} \
---enhance_layer_index ${enhance_layer_index} \
+
+# Calculate experiment directory path (same as in pope_eval_mplug.py)
+model_string_name=$(basename ${model_path})
+if [ "${use_only}" = "True" ]; then
+    method_name="ONLY"
+elif [ "${use_ritual}" = "True" ]; then
+    method_name="RITUAL"
+elif [ "${use_vcd}" = "True" ]; then
+    method_name="VCD"
+elif [ "${use_m3id}" = "True" ]; then
+    method_name="M3ID"
+else
+    method_name="Regular"
+fi
+
+# Array to store results
+declare -a results
+
+for seed in "${seeds[@]}"; do
+    echo "=========================================="
+    echo "Running evaluation with seed=${seed}"
+    echo "=========================================="
+    
+    # Run evaluation
+    python eval_bench/pope_eval_${model}.py \
+        --seed ${seed} \
+        --model_path ${model_path} \
+        --model_base ${model} \
+        --pope_path ${pope_path} \
+        --data_path ${data_path} \
+        --log_path ${log_path} \
+        --use_ritual ${use_ritual} \
+        --use_vcd ${use_vcd} \
+        --use_m3id ${use_m3id} \
+        --use_only ${use_only} \
+        --ritual_alpha_pos ${ritual_alpha_pos} \
+        --ritual_alpha_neg ${ritual_alpha_neg} \
+        --ritual_beta ${ritual_beta} \
+        --js_gamma ${js_gamma} \
+        --type ${type} \
+        --dataset_name ${dataset_name} \
+        --enhance_layer_index ${enhance_layer_index} \
+        --temperature ${temperature}
+
+    # Construct log file path (same as in pope_eval_mplug.py)
+    log_file="${log_path}/pope/${model_string_name}/${method_name}_${dataset_name}_${type}_${ritual_alpha_pos}_${ritual_alpha_neg}_${ritual_beta}_${js_gamma}_layer_${enhance_layer_index}_seed_${seed}/log.txt"
+    
+    # Extract the final result line from the log file
+    if [ -f "${log_file}" ]; then
+        result_line=$(grep -E "acc: [0-9]+\.[0-9]+, precision: [0-9]+\.[0-9]+, recall: [0-9]+\.[0-9]+, f1: [0-9]+\.[0-9]+, yes_ratio: [0-9]+\.[0-9]+" "${log_file}" | tail -1)
+        
+        if [ -n "$result_line" ]; then
+            results+=("Seed ${seed}: ${result_line}")
+            echo "Seed ${seed} completed: ${result_line}"
+        else
+            results+=("Seed ${seed}: Result not found in log file")
+            echo "Warning: Could not extract result for seed ${seed} from ${log_file}"
+        fi
+    else
+        results+=("Seed ${seed}: Log file not found at ${log_file}")
+        echo "Warning: Log file not found at ${log_file}"
+    fi
+    
+    echo ""
+done
+
+#####################################
+# Print summary results
+#####################################
+echo "=========================================="
+echo "SUMMARY RESULTS"
+echo "=========================================="
+for result in "${results[@]}"; do
+    echo "$result"
+done
+echo "=========================================="
+

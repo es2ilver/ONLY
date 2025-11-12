@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Seeds for minigpt: 4, 8, 10
-seeds=(4 8 10)
+seeds=(4 8 10 13)
 
 # minigpt
 model="minigpt"
@@ -18,6 +18,8 @@ use_ritual=False
 use_vcd=False
 use_m3id=False
 use_only=True
+method_name="only"
+
 ritual_alpha_pos=3.0
 ritual_alpha_neg=1.0
 ritual_beta=0.1
@@ -31,22 +33,6 @@ max_new_tokens=64
 # Run experiments for multiple seeds
 #####################################
 export CUDA_VISIBLE_DEVICES=0
-
-# Calculate method name
-if [ "${use_only}" = "True" ]; then
-    method_name="only"
-elif [ "${use_ritual}" = "True" ]; then
-    method_name="ritual"
-elif [ "${use_vcd}" = "True" ]; then
-    method_name="vcd"
-elif [ "${use_m3id}" = "True" ]; then
-    method_name="m3id"
-else
-    method_name="regular"
-fi
-
-# Array to store results
-declare -a results
 
 for seed in "${seeds[@]}"; do
     echo "=========================================="

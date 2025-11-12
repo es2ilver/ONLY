@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Seeds for mplug: 4, 10, 13
-seeds=(4 10 13)
+seeds=(4 8 10 13)
 
 dataset_name="coco" # coco | aokvqa | gqa
 type="random" # random | popular | adversarial
