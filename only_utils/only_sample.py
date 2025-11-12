@@ -143,7 +143,7 @@ def sample(
             next_token_logits_pos = next_token_logits
             next_token_logits_neg = next_token_logits
 
-            if model_kwargs["images_pos"] is not None and use_ritual:
+            if model_kwargs.get("images_pos") is not None and use_ritual:
                 model_inputs_pos = self.prepare_inputs_for_generation_pos(input_ids, **model_kwargs_pos)
                 outputs_pos, _ = self(
                     **model_inputs_pos,
@@ -153,7 +153,7 @@ def sample(
                 )
                 next_token_logits_pos = outputs_pos.logits[:, -1, :]
 
-            elif model_kwargs["images_neg"] is not None and use_vcd:
+            elif model_kwargs.get("images_neg") is not None and use_vcd:
                 model_inputs_neg = self.prepare_inputs_for_generation_neg(input_ids, **model_kwargs_neg)
                 outputs_neg, _ = self(
                     **model_inputs_neg,
