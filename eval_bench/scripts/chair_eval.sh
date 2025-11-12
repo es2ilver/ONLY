@@ -1,10 +1,10 @@
 #!/bin/bash
 
-seed=3407
+seed=4
 
 # llava
 model="llava"
-model_path="/data/ce/model/llava-v1.5-7b"
+model_path="/home/data/vgilab/jeongeun/checkpoints/llava-v1.5-7b"
 
 # instructblip
 # model="instructblip"
@@ -14,7 +14,15 @@ model_path="/data/ce/model/llava-v1.5-7b"
 # model="qwen-vl"
 # model_path="/data/zifu/model/Qwen-VL-Chat"
 
-coco_path="/data/ce/data/coco"
+# minigpt
+# model="minigpt"
+# model_path="/home/data/vgilab/jeongeun/checkpoints/pretrained_minigpt4_llama2_7b.pth"
+
+# mplu 
+# model="mplu"
+# model_path="/home/data/vgilab/jeongeun/checkpoints/mplug-owl2-llama2-7b"
+
+coco_path="/home/data/vgilab/jeongeun/datasets/coco"
 img_path="${coco_path}/val2014/"
 anno_path="${coco_path}/annotations/instances_val2014.json"
 log_path="./logs/chair"
@@ -39,7 +47,7 @@ max_new_tokens=128
 #####################################
 # Run experiment
 #####################################
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=0
 python eval_bench/chair_eval_${model}.py \
 --seed ${seed} \
 --model_path ${model_path} \

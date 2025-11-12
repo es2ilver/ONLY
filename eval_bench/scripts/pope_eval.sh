@@ -5,7 +5,7 @@ seed=4 # Llava 4, 6, 8, # Minigpt 4, 8, 10 # mplu 4, 10, 13
 dataset_name="coco" # coco | aokvqa | gqa
 type="adversarial" # random | popular | adversarial
 
-# # llava
+# llava
 model="llava"
 model_path="/home/data/vgilab/jeongeun/checkpoints/llava-v1.5-7b"
 
@@ -23,10 +23,10 @@ model_path="/home/data/vgilab/jeongeun/checkpoints/llava-v1.5-7b"
 
 # mplu 
 # model="mplu"
-# model_path="/home/data/vgilab/jeongeun/checkpoints/pretrained_minigpt4_llama2_7b.pth"
+# model_path="/home/data/vgilab/jeongeun/checkpoints/mplug-owl2-llama2-7b"
 
-pope_path="/data/ce/data/POPE/${dataset_name}/${dataset_name}_pope_${type}.json"
-data_path="/data/ce/data/coco/val2014"
+pope_path="/home/data/vgilab/jeongeun/datasets/POPE/${dataset_name}/${dataset_name}_pope_${type}.json"
+data_path="/home/data/vgilab/jeongeun/datasets/coco/val2014"
 
 # data_path="/data/ce/data/gqa/images"
 
@@ -47,7 +47,7 @@ enhance_layer_index=0
 #####################################
 # Run single experiment
 #####################################
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=0
 python eval_bench/pope_eval_${model}.py \
 --seed ${seed} \
 --model_path ${model_path} \
