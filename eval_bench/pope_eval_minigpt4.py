@@ -305,12 +305,17 @@ def main():
                 )
         
         # Decode output
-        input_token_len = context_emb.shape[1]
         # outputs is a tuple (input_ids, ...) when use_only=True
         if isinstance(outputs, tuple):
             outputs = outputs[0]
-        output_ids = outputs[:, input_token_len:]
-        outputs_text = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
+        
+        # When using inputs_embeds, decode the full sequence
+        # The input part may contain dummy tokens, so we decode everything and remove stop words
+        if len(outputs.shape) == 1:
+            outputs = outputs.unsqueeze(0)
+        
+        # Decode full sequence
+        outputs_text = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
         outputs_text = outputs_text.strip()
         
         # Remove stop words
@@ -319,6 +324,12 @@ def main():
             if outputs_text.endswith(stop_text):
                 outputs_text = outputs_text[:-len(stop_text)]
         outputs_text = outputs_text.strip()
+        
+        # Remove the prompt part if it appears at the beginning
+        # The prompt might be decoded as part of the output when using inputs_embeds
+        prompt_text = qs.strip()
+        if outputs_text.startswith(prompt_text):
+            outputs_text = outputs_text[len(prompt_text):].strip()
         
         pred_list = recorder(outputs_text, pred_list)
         print(f"[VQA for POPE]")
