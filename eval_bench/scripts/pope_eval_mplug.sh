@@ -74,8 +74,7 @@ for seed in "${seeds[@]}"; do
         --type ${type} \
         --dataset_name ${dataset_name} \
         --enhance_layer_index ${enhance_layer_index} \
-        --temperature ${temperature} \ 
-        --do_sample ${do_sample}
+        --temperature ${temperature} --do_sample ${do_sample}
     
     # Construct log file path (same as in pope_eval_mplug.py)
     log_file="${log_path}/pope/${model_string_name}/${method_name}_${dataset_name}_${type}_${ritual_alpha_pos}_${ritual_alpha_neg}_${ritual_beta}_${js_gamma}_layer_${enhance_layer_index}_seed_${seed}/log.txt"
