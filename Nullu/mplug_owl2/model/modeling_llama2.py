@@ -308,18 +308,28 @@ def model_forward(
             inputs_embeds = self.embed_tokens(input_ids)
         
         # Prepare attention_mask in 2D format for ONLY transformers
-        # (modality_indicators is ignored when use_only=True)
+        # attention_mask from prepare_inputs_labels_for_multimodal should be 2D (batch, seq_len)
         if attention_mask is None:
             attention_mask_2d = torch.ones(
                 (batch_size, seq_length_with_past), dtype=torch.bool, device=inputs_embeds.device
             )
+        elif attention_mask.dim() == 2:
+            # Already 2D: (batch, seq_len) - this is the expected format
+            attention_mask_2d = attention_mask.bool()
         else:
-            # Convert to 2D: take the last dimension if multi-dimensional
-            if attention_mask.dim() > 2:
-                # Multi-dimensional: extract 2D mask
-                attention_mask_2d = attention_mask.view(batch_size, -1).bool()
+            # Unexpected shape - try to convert to 2D
+            # This shouldn't happen normally, but handle it gracefully
+            if attention_mask.dim() == 1:
+                attention_mask_2d = attention_mask.unsqueeze(0).bool()
+            elif attention_mask.dim() == 4:
+                # 4D: (batch, 1, tgt_len, src_len) -> take src_len dimension
+                attention_mask_2d = attention_mask[:, 0, -1, :].bool()
+            elif attention_mask.dim() == 3:
+                # 3D: (batch, tgt_len, src_len) -> take src_len dimension
+                attention_mask_2d = attention_mask[:, -1, :].bool()
             else:
-                attention_mask_2d = attention_mask.bool()
+                # Fallback: use first two dimensions
+                attention_mask_2d = attention_mask.view(batch_size, -1)[:, :seq_length_with_past].bool()
         
         result = _original_llama_model_forward(
             self,
