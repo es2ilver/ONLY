@@ -24,7 +24,9 @@ ritual_alpha_neg=1.0
 ritual_beta=0.1
 js_gamma=0.2
 enhance_layer_index=0
+
 temperature=0.0  # do_sample=False
+do_sample=False
 
 #####################################
 # Run experiments for multiple seeds
@@ -72,7 +74,8 @@ for seed in "${seeds[@]}"; do
         --type ${type} \
         --dataset_name ${dataset_name} \
         --enhance_layer_index ${enhance_layer_index} \
-        --temperature ${temperature}
+        --temperature ${temperature} \ 
+        --do_sample ${do_sample}
     
     # Construct log file path (same as in pope_eval_mplug.py)
     log_file="${log_path}/pope/${model_string_name}/${method_name}_${dataset_name}_${type}_${ritual_alpha_pos}_${ritual_alpha_neg}_${ritual_beta}_${js_gamma}_layer_${enhance_layer_index}_seed_${seed}/log.txt"
