@@ -19,7 +19,7 @@ log_path="./logs"
 use_ritual=False
 use_vcd=False
 use_m3id=False
-use_only=False
+use_only=True
 ritual_alpha_pos=3.0
 ritual_alpha_neg=1.0
 ritual_beta=0.1
@@ -31,7 +31,7 @@ temperature=1.0  # do_sample=False
 #####################################
 # Run experiments for multiple seeds
 #####################################
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 
 # Calculate experiment directory path (same as in pope_eval_minigpt4.py)
 model_string_name=$(basename ${model_path})
