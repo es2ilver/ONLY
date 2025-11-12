@@ -1056,6 +1056,8 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
+        use_only: Optional[bool] = False,
+        enhance_layer_index: Optional[int] = 0,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         r"""
         Args:
@@ -1099,6 +1101,8 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+            use_only=use_only,
+            enhance_layer_index=enhance_layer_index,
         )
         hidden_states = outputs[0]
         if self.pretraining_tp > 1:
@@ -1160,6 +1164,8 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
                 "past_key_values": past_key_values,
                 "use_cache": kwargs.get("use_cache"),
                 "attention_mask": attention_mask,
+                "use_only": kwargs.get("use_only", None),
+                "enhance_layer_index": kwargs.get("enhance_layer_index", None),
             }
         )
         return model_inputs
