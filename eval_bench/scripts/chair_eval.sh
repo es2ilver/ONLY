@@ -3,8 +3,8 @@
 seed=4
 
 # llava
-model="llava"
-model_path="/home/data/vgilab/jeongeun/checkpoints/llava-v1.5-7b"
+# model="llava"
+# model_path="/home/data/vgilab/jeongeun/checkpoints/llava-v1.5-7b"
 
 # instructblip
 # model="instructblip"
@@ -15,8 +15,9 @@ model_path="/home/data/vgilab/jeongeun/checkpoints/llava-v1.5-7b"
 # model_path="/data/zifu/model/Qwen-VL-Chat"
 
 # minigpt
-# model="minigpt"
-# model_path="/home/data/vgilab/jeongeun/checkpoints/pretrained_minigpt4_llama2_7b.pth"
+model="minigpt"
+model_path="/home/data/vgilab/jeongeun/checkpoints/pretrained_minigpt4_llama2_7b.pth"
+llama_model_path="/home/data/vgilab/jeongeun/checkpoints/llama-2-7b-chat-hf"
 
 # mplu 
 # model="mplu"
@@ -52,6 +53,7 @@ python eval_bench/chair_eval_${model}.py \
 --seed ${seed} \
 --model_path ${model_path} \
 --model_base ${model} \
+--llama_model_path ${llama_model_path} \
 --data_path ${img_path} \
 --anno_path ${anno_path} \
 --log_path ${log_path} \

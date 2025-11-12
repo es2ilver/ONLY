@@ -70,4 +70,20 @@ class POPEDataSet(Dataset):
             query = self.query_list[index]
             label = self.label_list[index]
             return {"image": image_tensor, "query": query, "label": label, "image_path": image_path}
+        
+        elif self.model == 'minigpt':
+            raw_image = Image.open(image_path).convert("RGB")
+            image = self.trans(raw_image)
+            query = self.query_list[index]
+            label = self.label_list[index]
+            return {"image": image, "query": query, "label": label, "image_path": image_path}
+        
+        elif self.model == 'mplug':
+            raw_image = Image.open(image_path).convert("RGB")
+            max_edge = max(raw_image.size)
+            raw_image = raw_image.resize((max_edge, max_edge))
+            image = self.trans.preprocess(raw_image, return_tensors='pt')['pixel_values'][0]
+            query = self.query_list[index]
+            label = self.label_list[index]
+            return {"image": image, "query": query, "label": label, "image_path": image_path}
 

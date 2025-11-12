@@ -57,6 +57,16 @@ class CHAIRDataset(Dataset):
         elif self.model == 'instructblip':
             raw_image = Image.open(image_path).convert("RGB")
             image_tensor = self.trans['eval'](raw_image)
+        
+        elif self.model == 'minigpt':
+            raw_image = Image.open(image_path).convert("RGB")
+            image_tensor = self.trans(raw_image)
+        
+        elif self.model == 'mplug':
+            raw_image = Image.open(image_path).convert("RGB")
+            max_edge = max(raw_image.size)
+            raw_image = raw_image.resize((max_edge, max_edge))
+            image_tensor = self.trans.preprocess(raw_image, return_tensors='pt')['pixel_values'][0]
             
         return {"image_id": img_id, 
                 "image_path": image_path, 
