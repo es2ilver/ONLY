@@ -306,6 +306,9 @@ def main():
         
         # Decode output
         input_token_len = context_emb.shape[1]
+        # outputs is a tuple (input_ids, ...) when use_only=True
+        if isinstance(outputs, tuple):
+            outputs = outputs[0]
         output_ids = outputs[:, input_token_len:]
         outputs_text = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
         outputs_text = outputs_text.strip()
