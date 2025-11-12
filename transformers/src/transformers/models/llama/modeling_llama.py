@@ -1104,7 +1104,24 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             use_only=use_only,
             enhance_layer_index=enhance_layer_index,
         )
-        hidden_states = outputs[0]
+        # Handle return_dict and use_only cases
+        # When use_only=True, LlamaModel returns (BaseModelOutputWithPast, hidden_states_cd) tuple
+        if isinstance(outputs, tuple) and len(outputs) == 2:
+            # use_only=True case: (BaseModelOutputWithPast or tuple, hidden_states_cd)
+            model_outputs, hidden_states_cd = outputs
+            if return_dict:
+                # model_outputs is BaseModelOutputWithPast
+                hidden_states = model_outputs.last_hidden_state
+            else:
+                # model_outputs is tuple (hidden_states, ...)
+                hidden_states = model_outputs[0]
+        else:
+            # Normal case (use_only=False)
+            if return_dict:
+                hidden_states = outputs.last_hidden_state
+            else:
+                hidden_states = outputs[0]
+            hidden_states_cd = None
         if self.pretraining_tp > 1:
             lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.pretraining_tp, dim=0)
             logits = [F.linear(hidden_states, lm_head_slices[i]) for i in range(self.pretraining_tp)]
@@ -1127,16 +1144,35 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             loss = loss_fct(shift_logits, shift_labels)
 
         if not return_dict:
-            output = (logits,) + outputs[1:]
+            if isinstance(outputs, tuple) and len(outputs) == 2:
+                # use_only=True case
+                model_outputs, _ = outputs
+                output = (logits,) + model_outputs[1:]
+            else:
+                # Normal case
+                output = (logits,) + outputs[1:]
             return (loss,) + output if loss is not None else output
 
-        return CausalLMOutputWithPast(
-            loss=loss,
-            logits=logits,
-            past_key_values=outputs.past_key_values,
-            hidden_states=outputs.hidden_states,
-            attentions=outputs.attentions,
-        )
+        # return_dict=True case
+        if isinstance(outputs, tuple) and len(outputs) == 2:
+            # use_only=True case
+            model_outputs, _ = outputs
+            return CausalLMOutputWithPast(
+                loss=loss,
+                logits=logits,
+                past_key_values=model_outputs.past_key_values,
+                hidden_states=model_outputs.hidden_states,
+                attentions=model_outputs.attentions,
+            )
+        else:
+            # Normal case
+            return CausalLMOutputWithPast(
+                loss=loss,
+                logits=logits,
+                past_key_values=outputs.past_key_values,
+                hidden_states=outputs.hidden_states,
+                attentions=outputs.attentions,
+            )
 
     def prepare_inputs_for_generation(
         self, input_ids, past_key_values=None, attention_mask=None, inputs_embeds=None, **kwargs
