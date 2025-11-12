@@ -227,6 +227,9 @@ def main():
         
         # Decode output
         input_token_len = input_ids.shape[1]
+        # outputs is a tuple (input_ids, ...) when use_only=True
+        if isinstance(outputs, tuple):
+            outputs = outputs[0]
         output_ids = outputs[:, input_token_len:]
         outputs_text = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
         
