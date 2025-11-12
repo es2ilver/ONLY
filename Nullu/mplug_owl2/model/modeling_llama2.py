@@ -189,6 +189,7 @@ class LlamaDecoderLayer(nn.Module):
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
         use_cache: Optional[bool] = False,
+        **kwargs,  # Accept additional kwargs (e.g., last_layer, hidden_states_cd for ONLY support)
     ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
         """
         Args:
@@ -234,6 +235,17 @@ class LlamaDecoderLayer(nn.Module):
         if use_cache:
             outputs += (present_key_value,)
 
+        # For ONLY support: return hidden_states_cd and residual_cd if requested
+        # These are used by ONLY transformers' forward when use_only=True
+        hidden_states_cd = kwargs.get('hidden_states_cd', None)
+        residual_cd = kwargs.get('residual_cd', None)
+        
+        # If ONLY is being used, return the expected tuple format
+        if 'last_layer' in kwargs or hidden_states_cd is not None:
+            # For ONLY: return (layer_outputs, hidden_states_cd, residual_cd)
+            # Since mPLUG-Owl2 doesn't implement ONLY logic, pass through hidden_states_cd
+            return outputs, hidden_states_cd, residual_cd
+        
         return outputs
 
 
@@ -277,42 +289,37 @@ def model_forward(
         past_key_values_length = past_key_values[0][0].shape[2]
         seq_length_with_past = seq_length_with_past + past_key_values_length
 
-    if position_ids is None:
-        device = input_ids.device if input_ids is not None else inputs_embeds.device
-        position_ids = torch.arange(
-            past_key_values_length, seq_length + past_key_values_length, dtype=torch.long, device=device
-        )
-        position_ids = position_ids.unsqueeze(0).view(-1, seq_length)
-    else:
-        position_ids = position_ids.view(-1, seq_length).long()
-
     # If use_only is True, use ONLY transformers' forward (before monkey patch)
     # ONLY transformers already has use_only support built-in
-    # Call it before processing attention_mask to avoid shape issues
+    # Call it BEFORE processing attention_mask to avoid shape issues
     if use_only and _original_llama_model_forward is not None:
+        # Prepare position_ids if needed
+        if position_ids is None:
+            device = input_ids.device if input_ids is not None else inputs_embeds.device
+            position_ids = torch.arange(
+                past_key_values_length, seq_length + past_key_values_length, dtype=torch.long, device=device
+            )
+            position_ids = position_ids.unsqueeze(0).view(-1, seq_length)
+        else:
+            position_ids = position_ids.view(-1, seq_length).long()
+        
         # Prepare inputs_embeds if needed
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input_ids)
         
-        # Prepare attention_mask in original format (2D) for ONLY transformers
+        # Prepare attention_mask in 2D format for ONLY transformers
+        # (modality_indicators is ignored when use_only=True)
         if attention_mask is None:
             attention_mask_2d = torch.ones(
                 (batch_size, seq_length_with_past), dtype=torch.bool, device=inputs_embeds.device
             )
         else:
-            # Convert attention_mask to 2D format expected by ONLY transformers
-            if attention_mask.dim() == 4:
-                # 4D: (batch, 1, tgt_len, src_len) -> 2D: (batch, src_len)
-                attention_mask_2d = attention_mask[:, 0, 0, :].bool()
-            elif attention_mask.dim() == 3:
-                # 3D: (batch, tgt_len, src_len) -> 2D: (batch, src_len)
-                attention_mask_2d = attention_mask[:, 0, :].bool()
-            elif attention_mask.dim() == 2:
-                # Already 2D
-                attention_mask_2d = attention_mask.bool()
-            else:
-                # Fallback: use first dimension
+            # Convert to 2D: take the last dimension if multi-dimensional
+            if attention_mask.dim() > 2:
+                # Multi-dimensional: extract 2D mask
                 attention_mask_2d = attention_mask.view(batch_size, -1).bool()
+            else:
+                attention_mask_2d = attention_mask.bool()
         
         result = _original_llama_model_forward(
             self,
@@ -330,6 +337,16 @@ def model_forward(
         )
         # Return (outputs, hidden_states_cd) tuple
         return result if isinstance(result, tuple) and len(result) == 2 else (result, None)
+
+    # Normal mPLUG-Owl2 processing (use_only=False or _original_llama_model_forward is None)
+    if position_ids is None:
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+        position_ids = torch.arange(
+            past_key_values_length, seq_length + past_key_values_length, dtype=torch.long, device=device
+        )
+        position_ids = position_ids.unsqueeze(0).view(-1, seq_length)
+    else:
+        position_ids = position_ids.view(-1, seq_length).long()
 
     if inputs_embeds is None:
         inputs_embeds = self.embed_tokens(input_ids)
