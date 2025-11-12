@@ -272,7 +272,12 @@ def main():
         conv_out.append_message(conv_out.roles[1], None)
         prompt_out = conv_out.get_prompt()
         
-        input_ids = tokenizer_image_token(prompt_out, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).cuda()
+        input_ids = tokenizer_image_token(
+            prompt_out,
+            tokenizer,
+            IMAGE_TOKEN_INDEX,
+            return_tensors='pt'
+            ).unsqueeze(0).to(device)
         stop_str = conv_out.sep if conv_out.sep_style != SeparatorStyle.TWO else conv_out.sep2
 
         # ==============================================

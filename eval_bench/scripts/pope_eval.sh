@@ -47,7 +47,7 @@ enhance_layer_index=0
 #####################################
 # Run single experiment
 #####################################
-# export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 python eval_bench/pope_eval_${model}.py \
 --seed ${seed} \
 --model_path ${model_path} \
