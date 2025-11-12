@@ -15,8 +15,13 @@ from torchvision.transforms import v2
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'Nullu'))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'Nullu', 'minigpt4'))
+
+# Add Nullu to path for minigpt4
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Goes to ONLY/
+nullu_path = os.path.abspath(os.path.join(base_dir, 'Nullu'))
+if nullu_path not in sys.path:
+    sys.path.insert(0, nullu_path)
+sys.path.append(os.path.join(nullu_path, 'minigpt4'))
 
 from minigpt4.common.config import Config
 from minigpt4.common.registry import registry
