@@ -184,6 +184,9 @@ def main():
     logger.info('Initializing MiniGPT-4 Model')
 
     # Load MiniGPT-4 model
+    # Set options attribute if not present (required by Config class)
+    if not hasattr(args, 'options'):
+        args.options = None
     cfg = Config(args)
     if args.llama_model_path:
         cfg.model_cfg.llama_model = args.llama_model_path
