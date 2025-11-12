@@ -91,6 +91,25 @@ def sample(
     # auto-regressive generation
     model_kwargs_pos = model_kwargs.copy()
     model_kwargs_neg = model_kwargs.copy()
+    # persist custom flags across generation steps (HF drops unknown keys)
+    _persist_keys = {
+        k: v
+        for k, v in model_kwargs.items()
+        if k in {
+            "use_only",
+            "enhance_layer_index",
+            "use_ritual",
+            "use_vcd",
+            "use_m3id",
+            "ritual_alpha_pos",
+            "ritual_alpha_neg",
+            "ritual_beta",
+            "js_gamma",
+            "images_pos",
+            "images_neg",
+        }
+        and v is not None
+    }
     
     print("use_ritual = ", model_kwargs.get("use_ritual"))
     print("use_vcd = ", model_kwargs.get("use_vcd"))
@@ -275,16 +294,20 @@ def sample(
         model_kwargs = self._update_model_kwargs_for_generation(
             outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
         )
+        # restore custom flags
+        model_kwargs.update(_persist_keys)
 
         ## ritual_comments: update model_kwargs_ritual for complementive & contrastive decoding
         if use_ritual:
             model_kwargs_pos = self._update_model_kwargs_for_generation(
                 outputs_pos, model_kwargs_pos, is_encoder_decoder=self.config.is_encoder_decoder
             )
+            model_kwargs_pos.update(_persist_keys)
         if use_vcd or use_m3id:
             model_kwargs_neg = self._update_model_kwargs_for_generation(
                 outputs_neg, model_kwargs_neg, is_encoder_decoder=self.config.is_encoder_decoder
             )
+            model_kwargs_neg.update(_persist_keys)
             
         # if eos_token was found in one sentence, set sentence to finished
         if eos_token_id_tensor is not None:
