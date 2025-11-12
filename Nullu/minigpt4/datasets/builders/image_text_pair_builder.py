@@ -11,7 +11,10 @@ from minigpt4.datasets.datasets.llava_dataset import LlavaDetailDataset, LlavaRe
 from minigpt4.datasets.datasets.unnatural_instruction import UnnaturalDataset
 from minigpt4.datasets.datasets.multitask_conversation import MultiTaskConversationDataset
 from minigpt4.datasets.datasets.flickr import GroundedDetailDataset,CaptionToObjectDataset,PhraseToObjectDataset
-from minigpt4.datasets.datasets.vg_dataset import ReferVisualGenomeDataset
+try:
+    from minigpt4.datasets.datasets.vg_dataset import ReferVisualGenomeDataset
+except ImportError:
+    ReferVisualGenomeDataset = None
 from minigpt4.datasets.datasets.coco_dataset import ReferCOCODataset, InvReferCOCODataset
 from minigpt4.datasets.datasets.gqa_datasets import GQADataset
 from minigpt4.datasets.datasets.aok_vqa_datasets import AOKVQADataset
@@ -226,31 +229,32 @@ class RefCOCOGBuilder(AllRefCOCOBuilder):
         "default": "configs/datasets/coco_bbox/invrefcocog.yaml",
     }
 
-@registry.register_builder("refvg")
-class RefVisualGenomeBuilder(BaseDatasetBuilder):
-    train_dataset_cls = ReferVisualGenomeDataset
-    DATASET_CONFIG_DICT = {
-        "default": "configs/datasets/vg/ref.yaml",
-    }
+if ReferVisualGenomeDataset is not None:
+    @registry.register_builder("refvg")
+    class RefVisualGenomeBuilder(BaseDatasetBuilder):
+        train_dataset_cls = ReferVisualGenomeDataset
+        DATASET_CONFIG_DICT = {
+            "default": "configs/datasets/vg/ref.yaml",
+        }
 
-    def build_datasets(self):
-        # at this point, all the annotations and image/videos should be all downloaded to the specified locations.
-        logging.info("Building datasets...")
-        self.build_processors()
+        def build_datasets(self):
+            # at this point, all the annotations and image/videos should be all downloaded to the specified locations.
+            logging.info("Building datasets...")
+            self.build_processors()
 
-        build_info = self.config.build_info
-        data_dir = build_info.data_dir
-        datasets = dict()
+            build_info = self.config.build_info
+            data_dir = build_info.data_dir
+            datasets = dict()
 
-        # create datasets
-        dataset_cls = self.train_dataset_cls
-        datasets['train'] = dataset_cls(
-            vis_processor=self.vis_processors["train"],
-            text_processor=self.text_processors["train"],
-            data_dir=data_dir,
-        )
+            # create datasets
+            dataset_cls = self.train_dataset_cls
+            datasets['train'] = dataset_cls(
+                vis_processor=self.vis_processors["train"],
+                text_processor=self.text_processors["train"],
+                data_dir=data_dir,
+            )
 
-        return datasets
+            return datasets
 
 
 @registry.register_builder("textcaps_caption")
