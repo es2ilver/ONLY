@@ -304,49 +304,20 @@ def main():
                     enhance_layer_index=args.enhance_layer_index,
                 )
         
-        # Decode output - follow original minigpt4 approach
+        # Decode output - simple approach to debug
         # outputs is a tuple (input_ids, ...) when use_only=True
         if isinstance(outputs, tuple):
             outputs = outputs[0]
         
+        # Get first sequence
         if len(outputs.shape) == 1:
-            outputs = outputs.unsqueeze(0)
+            output_ids = outputs
+        else:
+            output_ids = outputs[0]
         
-        # Follow original minigpt4 approach from conversation.py and minigpt_base.py
-        # Decode the entire sequence, then post-process to remove prompt
-        output_ids = outputs[0]  # Get first sequence
-        
-        # Remove pad_token_id if present (similar to minigpt_base.py line 383-384)
-        if len(output_ids) > 0 and output_ids[0].item() == 0:
-            output_ids = output_ids[1:]
-        
-        # Decode entire sequence (similar to conversation.py line 188)
+        # Simply decode the entire output_ids to see what we get
         outputs_text = tokenizer.decode(output_ids, skip_special_tokens=True)
         outputs_text = outputs_text.strip()
-        
-        # Remove stop words
-        for stop_id in stop_words_ids:
-            stop_text = tokenizer.decode(stop_id[0], skip_special_tokens=True)
-            if outputs_text.endswith(stop_text):
-                outputs_text = outputs_text[:-len(stop_text)]
-        outputs_text = outputs_text.strip()
-        
-        # For POPE evaluation, the prompt is a simple question, so we need to extract only the answer
-        # The generate() method with inputs_embeds returns [bos_token_id, generated_tokens...]
-        # But when decoded, it may include the prompt. Since we can't easily identify the prompt
-        # in the decoded text for POPE (unlike conversation format), we need to extract only
-        # the newly generated tokens by skipping the context_emb length
-        # However, since generate() initializes with [bos_token_id] and appends generated tokens,
-        # the output_ids structure is: [bos_token_id, generated_token1, generated_token2, ...]
-        # So we decode from the second token onwards to get only generated content
-        if len(output_ids) > 1:
-            # Skip the first token (bos_token_id) and decode only generated tokens
-            generated_ids = output_ids[1:]
-            generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
-            # Use the generated text if it's different from the full decoded text
-            # This handles cases where the full decode includes prompt repetition
-            if generated_text and generated_text != outputs_text:
-                outputs_text = generated_text
         
         pred_list = recorder(outputs_text, pred_list)
         print(f"[VQA for POPE]")
