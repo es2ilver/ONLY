@@ -249,6 +249,8 @@ def model_forward(
     output_attentions: Optional[bool] = None,
     output_hidden_states: Optional[bool] = None,
     return_dict: Optional[bool] = None,
+    use_only: Optional[bool] = None,
+    enhance_layer_index: Optional[int] = 0,
 ) -> Union[Tuple, BaseModelOutputWithPast]:
     output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
     output_hidden_states = (
@@ -294,6 +296,26 @@ def model_forward(
     attention_mask = self._prepare_decoder_attention_mask(
         attention_mask, (batch_size, seq_length), inputs_embeds, past_key_values_length
     )
+
+    # If use_only is True, use ONLY transformers' forward (before monkey patch)
+    # ONLY transformers already has use_only support built-in
+    if use_only and _original_llama_model_forward is not None:
+        result = _original_llama_model_forward(
+            self,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values=past_key_values,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+            use_only=use_only,
+            enhance_layer_index=enhance_layer_index,
+        )
+        # Return (outputs, hidden_states_cd) tuple
+        return result if isinstance(result, tuple) and len(result) == 2 else (result, None)
 
     hidden_states = inputs_embeds
 
@@ -461,7 +483,13 @@ def causal_model_forward(
         attentions=outputs.attentions,
     )
 
+# Store ONLY transformers' forward before monkey patching (for ONLY support)
+_original_llama_model_forward = None
+
 def replace_llama_modality_adaptive():
+    global _original_llama_model_forward
+    # Save ONLY transformers' forward (which has use_only support) before replacing it
+    _original_llama_model_forward = transformers.models.llama.modeling_llama.LlamaModel.forward
 
     transformers.models.llama.configuration_llama.LlamaConfig = LlamaConfig
     transformers.models.llama.modeling_llama.LlamaAttention = LlamaAttention
