@@ -272,9 +272,10 @@ def main():
         img_embeds, atts_img = model.encode_img(image_tensor)
         img_list = [img_embeds]
         
-        # Prepare prompt using conversation template (like original minigpt4)
+        # Prepare prompt using conversation template (like Nullu/minigpt4 common/eval_utils.py)
+        # Format: '<Img><ImageHere></Img> {}' following Nullu's dataset convention
         conv = CONV_VISION_LLama2.copy()
-        conv.append_message(conv.roles[0], qs)  # Add user question
+        conv.append_message(conv.roles[0], '<Img><ImageHere></Img> {}'.format(qs))  # Add user question with image placeholder (like aok_vqa_datasets.py)
         conv.append_message(conv.roles[1], None)  # Start assistant response
         prompt = conv.get_prompt()  # Get full prompt with system message and roles
         
