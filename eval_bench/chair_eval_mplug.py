@@ -15,8 +15,11 @@ from torchvision.transforms import v2
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'Nullu'))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'Nullu', 'mplug_owl2'))
+
+# Add Nullu to path for mplug_owl2
+nullu_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'Nullu')
+if nullu_path not in sys.path:
+    sys.path.insert(0, nullu_path)
 
 from mplug_owl2.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN
 from mplug_owl2.conversation import conv_templates
