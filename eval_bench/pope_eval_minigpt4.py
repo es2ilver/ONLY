@@ -272,12 +272,11 @@ def main():
         img_embeds, atts_img = model.encode_img(image_tensor)
         img_list = [img_embeds]
         
-        # Prepare prompt
-        prompt = qs
-        prompt_segs = prompt.split('<ImageHere>')
-        if len(prompt_segs) == 1:
-            # If <ImageHere> is not in prompt, add it at the beginning
-            prompt = '<ImageHere>' + prompt
+        # Prepare prompt using conversation template (like original minigpt4)
+        conv = CONV_VISION_LLama2.copy()
+        conv.append_message(conv.roles[0], qs)  # Add user question
+        conv.append_message(conv.roles[1], None)  # Start assistant response
+        prompt = conv.get_prompt()  # Get full prompt with system message and roles
         
         # Get context embedding
         context_emb = model.get_context_emb(prompt, img_list)
