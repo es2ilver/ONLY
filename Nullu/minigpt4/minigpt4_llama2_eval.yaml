@@ -5,7 +5,7 @@ model:
   end_sym: "</s>"
   low_resource: False
   prompt_template: '[INST] {} [/INST] '
-  ckpt: './minigpt4/pretrained_minigpt4_llama2_7b.pth'
+  ckpt: '/home/data/vgilab/jeongeun/checkpoints/pretrained_minigpt4_llama2_7b.pth'
 # 
 datasets:
   cc_sbu_align:
