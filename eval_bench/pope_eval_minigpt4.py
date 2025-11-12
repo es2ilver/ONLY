@@ -309,28 +309,18 @@ def main():
         if isinstance(outputs, tuple):
             outputs = outputs[0]
         
-        # When using inputs_embeds, extract only the generated tokens
-        # Same approach as chair_eval_minigpt4.py
-        input_token_len = context_emb.shape[1]
         if len(outputs.shape) == 1:
             outputs = outputs.unsqueeze(0)
         
-        # Debug: print shapes for troubleshooting
-        if batch_id == 0:
-            print(f"DEBUG: outputs.shape = {outputs.shape}, input_token_len = {input_token_len}")
+        # When using inputs_embeds, generate() returns [bos_token_id, generated_tokens...]
+        # Follow the approach from minigpt_base.py: decode entire sequence and post-process
+        output_ids = outputs[0]  # Get first sequence
+        # Remove pad_token_id if present (similar to minigpt_base.py line 383-384)
+        if len(output_ids) > 0 and output_ids[0].item() == 0:
+            output_ids = output_ids[1:]
         
-        output_ids = outputs[:, input_token_len:]
-        
-        # Debug: check if output_ids is empty
-        if batch_id == 0:
-            print(f"DEBUG: output_ids.shape = {output_ids.shape}, output_ids = {output_ids[0][:10] if output_ids.shape[1] > 0 else 'EMPTY'}")
-        
-        if output_ids.shape[1] == 0:
-            # If no tokens generated, try decoding the last few tokens of outputs
-            print(f"WARNING: No tokens generated, trying alternative decoding")
-            output_ids = outputs[:, -args.max_new_tokens:] if outputs.shape[1] > args.max_new_tokens else outputs
-        
-        outputs_text = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
+        # Decode the entire sequence (similar to conversation.py line 188)
+        outputs_text = tokenizer.decode(output_ids, skip_special_tokens=True)
         outputs_text = outputs_text.strip()
         
         # Remove stop words
